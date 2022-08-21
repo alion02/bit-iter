@@ -9,20 +9,20 @@ fn zero_value_handled_correctly() {
 #[test]
 fn non_zero_unsigned_value_handled_correctly() {
     let mut iter = BitIter::from(0x80010011u32);
-    assert_eq!(iter.next(), Some(0));
-    assert_eq!(iter.next(), Some(4));
-    assert_eq!(iter.next(), Some(16));
-    assert_eq!(iter.next(), Some(31));
+    assert_eq!(iter.next(), Some((0, 1 << 0)));
+    assert_eq!(iter.next(), Some((4, 1 << 4)));
+    assert_eq!(iter.next(), Some((16, 1 << 16)));
+    assert_eq!(iter.next(), Some((31, 1 << 31)));
     assert_eq!(iter.next(), None);
 }
 
 #[test]
 fn non_zero_signed_value_handled_correctly() {
     let mut iter = BitIter::from(0x80010011u32 as i32);
-    assert_eq!(iter.next(), Some(0));
-    assert_eq!(iter.next(), Some(4));
-    assert_eq!(iter.next(), Some(16));
-    assert_eq!(iter.next(), Some(31));
+    assert_eq!(iter.next(), Some((0, 1 << 0)));
+    assert_eq!(iter.next(), Some((4, 1 << 4)));
+    assert_eq!(iter.next(), Some((16, 1 << 16)));
+    assert_eq!(iter.next(), Some((31, 1 << 31)));
     assert_eq!(iter.next(), None);
 }
 
@@ -53,10 +53,10 @@ fn count_works() {
 #[test]
 fn last_works() {
     let iter = BitIter::from(0x25);
-    assert_eq!(iter.last(), Some(5usize));
+    assert_eq!(iter.last(), Some((5u32, 1 << 5)));
 
     let iter = BitIter::from(1);
-    assert_eq!(iter.last(), Some(0usize));
+    assert_eq!(iter.last(), Some((0u32, 1 << 0)));
 
     let iter = BitIter::from(0);
     assert_eq!(iter.last(), None);
@@ -65,17 +65,17 @@ fn last_works() {
 #[test]
 fn nth_works() {
     let mut iter = BitIter::from(0x5f);
-    assert_eq!(iter.nth(3), Some(3usize));
+    assert_eq!(iter.nth(3), Some((3u32, 1 << 3)));
     assert_eq!(iter.nth(3), None);
 }
 
 #[test]
 fn max_works() {
     let iter = BitIter::from(0x25);
-    assert_eq!(iter.max(), Some(5usize));
+    assert_eq!(iter.max(), Some((5u32, 1 << 5)));
 
     let iter = BitIter::from(1);
-    assert_eq!(iter.max(), Some(0usize));
+    assert_eq!(iter.max(), Some((0u32, 1 << 0)));
 
     let iter = BitIter::from(0);
     assert_eq!(iter.max(), None);
@@ -84,10 +84,10 @@ fn max_works() {
 #[test]
 fn min_works() {
     let iter = BitIter::from(0xa4);
-    assert_eq!(iter.min(), Some(2usize));
+    assert_eq!(iter.min(), Some((2u32, 1 << 2)));
 
     let iter = BitIter::from(0x80);
-    assert_eq!(iter.min(), Some(7usize));
+    assert_eq!(iter.min(), Some((7u32, 1 << 7)));
 
     let iter = BitIter::from(0);
     assert_eq!(iter.min(), None);
@@ -95,8 +95,8 @@ fn min_works() {
 
 #[test]
 fn fold_works() {
-    fn mul(acc: usize, x: usize) -> usize {
-        acc * x
+    fn mul(acc: u32, x: (u32, i32)) -> u32 {
+        acc * x.0
     }
 
     let iter = BitIter::from(0b00000000);
@@ -133,9 +133,9 @@ fn len_works() {
 #[test]
 fn can_iterate_in_reverse_order() {
     let mut iter = BitIter::from(0x80010011u32).rev();
-    assert_eq!(iter.next(), Some(31));
-    assert_eq!(iter.next(), Some(16));
-    assert_eq!(iter.next(), Some(4));
-    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), Some((31, 1 << 31)));
+    assert_eq!(iter.next(), Some((16, 1 << 16)));
+    assert_eq!(iter.next(), Some((4, 1 << 4)));
+    assert_eq!(iter.next(), Some((0, 1 << 0)));
     assert_eq!(iter.next(), None);
 }

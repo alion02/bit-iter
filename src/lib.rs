@@ -14,13 +14,13 @@
 //! # use bit_iter::*;
 //! let x : u32 = 0x10001;
 //!
-//! for b in BitIter::from(x) {
+//! for (b, _) in BitIter::from(x) {
 //!     println!("Bit {} is set.", b);
 //! }
 //!
 //! println!("In reverse order:");
 //!
-//! for b in BitIter::from(x).rev() {
+//! for (b, _) in BitIter::from(x).rev() {
 //!     println!("Bit {} is set.", b);
 //! }
 //! ```
@@ -55,8 +55,8 @@ mod tests;
 /// ```rust
 /// # use bit_iter::*;
 /// let mut iter = BitIter::from(0b10000001);
-/// assert_eq!(iter.next(), Some(0usize));
-/// assert_eq!(iter.next(), Some(7usize));
+/// assert_eq!(iter.next(), Some((0u32, 1 << 0)));
+/// assert_eq!(iter.next(), Some((7u32, 1 << 7)));
 /// assert_eq!(iter.next(), None);
 /// ```
 ///
@@ -64,8 +64,8 @@ mod tests;
 ///
 /// ```rust
 /// # use bit_iter::*;
-/// let v : Vec<usize> = BitIter::from(0b10000001).collect();
-/// assert_eq!(v, vec![0, 7]);
+/// let v : Vec<(u32, i32)> = BitIter::from(0b10000001).collect();
+/// assert_eq!(v, vec![(0, 1 << 0), (7, 1 << 7)]);
 /// ```
 ///
 /// `BitIter` implements `DoubleEndedIterator`, so you can also get the set bit positions in
@@ -73,8 +73,8 @@ mod tests;
 ///
 /// ```rust
 /// # use bit_iter::*;
-/// let v : Vec<usize> = BitIter::from(0b10000001).rev().collect();
-/// assert_eq!(v, vec![7, 0]);
+/// let v : Vec<(u32, i32)> = BitIter::from(0b10000001).rev().collect();
+/// assert_eq!(v, vec![(7, 1 << 7), (0, 1 << 0)]);
 /// ```
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct BitIter<T>(T);
@@ -92,14 +92,15 @@ macro_rules! iter_impl {
 
         /// `Iterator` implementation for `BitIter`.
         impl Iterator for BitIter<$t> {
-            type Item = usize;
+            type Item = (u32, $t);
 
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
                 if self.0 != 0 {
-                    let trailing = self.0.trailing_zeros() as usize;
+                    let trailing = self.0.trailing_zeros();
+                    let bit = self.0 & self.0.wrapping_neg();
                     self.0 &= self.0.wrapping_sub(1);
-                    Some(trailing)
+                    Some((trailing, bit))
                 } else {
                     None
                 }
@@ -119,7 +120,8 @@ macro_rules! iter_impl {
             #[inline]
             fn last(self) -> Option<Self::Item> {
                 if self.0 != 0 {
-                    Some(8 * size_of::<$t>() - 1 - self.0.leading_zeros() as usize)
+                    let leading = self.0.leading_zeros();
+                    Some((8 * size_of::<$t>() as u32 - 1 - leading, (1 as $t).rotate_right(1).rotate_right(leading)))
                 } else {
                     None
                 }
@@ -142,7 +144,7 @@ macro_rules! iter_impl {
             {
                 let mut accum = init;
                 while self.0 != 0 {
-                    accum = f(accum, self.0.trailing_zeros() as usize);
+                    accum = f(accum, (self.0.trailing_zeros(), self.0 & self.0.wrapping_neg()));
                     self.0 &= self.0.wrapping_sub(1);
                 }
                 accum
@@ -156,7 +158,7 @@ macro_rules! iter_impl {
             #[inline]
             fn min(self) -> Option<Self::Item> {
                 if self.0 != 0 {
-                    Some(self.0.trailing_zeros() as usize)
+                    Some((self.0.trailing_zeros(), self.0 & self.0.wrapping_neg()))
                 } else {
                     None
                 }
@@ -171,9 +173,11 @@ macro_rules! iter_impl {
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
                 if self.0 != 0 {
-                    let highest = 8 * size_of::<$t>() - 1 - self.0.leading_zeros() as usize;
-                    self.0 ^= 1 as $t << highest;
-                    Some(highest)
+                    let leading = self.0.leading_zeros();
+                    let highest = 8 * size_of::<$t>() as u32 - 1 - leading;
+                    let bit = (1 as $t).rotate_right(1).rotate_right(leading);
+                    self.0 ^= bit;
+                    Some((highest, bit))
                 } else {
                     None
                 }
